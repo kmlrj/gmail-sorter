@@ -10,9 +10,9 @@ module GmailSorter
   LABEL_COLORS = [
     { background_color: '#4986e7', text_color: '#ffffff' },
     { background_color: '#16a765', text_color: '#ffffff' },
-    { background_color: '#f83a22', text_color: '#ffffff' },
+    { background_color: '#fb4c2f', text_color: '#ffffff' },
     { background_color: '#ffad46', text_color: '#ffffff' },
-    { background_color: '#8e63ce', text_color: '#ffffff' },
+    { background_color: '#a479e2', text_color: '#ffffff' },
     { background_color: '#0d3472', text_color: '#ffffff' },
     { background_color: '#ac2b16', text_color: '#ffffff' },
     { background_color: '#076239', text_color: '#ffffff' }
@@ -39,15 +39,16 @@ module GmailSorter
 
   def run_local_oauth(authorizer)
     received_code = nil
+    port = 9292
     server = WEBrick::HTTPServer.new(
-      Port: 0,
+      Port: port,
       BindAddress: '127.0.0.1',
-      Logger: WEBrick::Log.new($stderr, WEBrick::Log::WARN)
+      Logger: WEBrick::Log.new($stderr, WEBrick::Log::WARN),
+      AccessLog: []
     )
-    port = server.config[:ServerPort]
-    redirect_uri = "http://127.0.0.1:#{port}/"
+    base_url = "http://127.0.0.1:#{port}"
 
-    server.mount_proc '/' do |req, res|
+    server.mount_proc '/oauth2callback' do |req, res|
       received_code = req.query['code']
       res.status = 200
       res['Content-Type'] = 'text/html'
@@ -55,7 +56,7 @@ module GmailSorter
       Thread.new { server.shutdown }
     end
 
-    url = authorizer.get_authorization_url(base_url: redirect_uri)
+    url = authorizer.get_authorization_url(base_url: base_url)
     warn "Opening browser for Gmail authorization..."
     system('open', url) if RUBY_PLATFORM.match?(/darwin/)
     warn "If the browser did not open, visit:\n#{url}\n"
@@ -67,7 +68,7 @@ module GmailSorter
     authorizer.get_and_store_credentials_from_code(
       user_id: 'default',
       code: received_code,
-      base_url: redirect_uri
+      base_url: base_url
     )
   end
 
